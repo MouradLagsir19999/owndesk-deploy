@@ -62,6 +62,14 @@
               "style": "Info",
               "text": "Dit wordt aangemaakt: Container Apps (web en worker, schaalt naar 0), PostgreSQL Flexible Server B1ms 32 GB, Key Vault, Storage, Log Analytics (max 0,5 GB/dag) en een budget met alerts.\n\nGeschatte kosten: ongeveer €20–70 per maand bij continu draaien (raming, niet gemeten)."
             }
+          },
+          {
+            "name": "vervolg",
+            "type": "Microsoft.Common.InfoBox",
+            "options": {
+              "style": "Warning",
+              "text": "Na de installatie volgt één extra stap: open Azure Cloud Shell (Bash) en plak het commando uit Uitvoer > cloudShellCommand van deze implementatie. Dat maakt de Entra-app voor inloggen aan. Daarvoor heb je de rol Application Administrator of Global Administrator nodig."
+            }
           }
         ]
       },

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "3462869147316418667"
+      "templateHash": "11273661840032802481"
     }
   },
   "parameters": {
@@ -43,7 +43,7 @@
     },
     "imageTag": {
       "type": "string",
-      "defaultValue": "20261022.4",
+      "defaultValue": "20261022.6",
       "metadata": {
         "description": "Image tag to install."
       }
@@ -74,6 +74,20 @@
       "defaultValue": "[utcNow('yyyy-MM-01')]",
       "metadata": {
         "description": "First day of the budget period. Leave the default."
+      }
+    },
+    "createEntraApp": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Create the Entra app registration (needs Application Administrator; run from Azure CLI or Cloud Shell)."
+      }
+    },
+    "templateUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/MouradLagsir19999/owndesk-deploy/main/mainTemplate.json",
+      "metadata": {
+        "description": "Public address of this template, used in the Cloud Shell command."
       }
     },
     "dbAdminPassword": {
@@ -704,6 +718,7 @@
       ]
     },
     {
+      "condition": "[parameters('createEntraApp')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "entra",
@@ -897,10 +912,10 @@
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.setupCodeSecretUri.value]"
           },
           "entraClientId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01').outputs.clientId.value]"
+            "value": "[coalesce(tryGet(if(parameters('createEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01'), null()), 'outputs', 'clientId', 'value'), '')]"
           },
           "entraServicePrincipalObjectId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01').outputs.servicePrincipalObjectId.value]"
+            "value": "[coalesce(tryGet(if(parameters('createEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01'), null()), 'outputs', 'servicePrincipalObjectId', 'value'), '')]"
           },
           "apiImage": {
             "value": "[format('{0}/owndesk-api:{1}', parameters('imageRegistry'), parameters('imageTag'))]"
@@ -1248,7 +1263,14 @@
       "metadata": {
         "description": "Open as a Global Administrator to grant the Graph permissions (setup wizard step 1)."
       },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01').outputs.consentUrl.value]"
+      "value": "[coalesce(tryGet(if(parameters('createEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01'), null()), 'outputs', 'consentUrl', 'value'), 'Eerst het Cloud Shell-commando uitvoeren.')]"
+    },
+    "cloudShellCommand": {
+      "type": "string",
+      "metadata": {
+        "description": "Next step: paste this in Azure Cloud Shell (Bash) to create the Entra app registration."
+      },
+      "value": "[if(parameters('createEntraApp'), 'Klaar: de Entra-app is aangemaakt.', format('az deployment group create -g {0} -n owndesk-entra --template-uri {1} --parameters naam={2} imageRegistry={3} imageTag={4} mailbox={5} budgetEuro={6} budgetEmail={7} createEntraApp=true', resourceGroup().name, parameters('templateUri'), parameters('naam'), parameters('imageRegistry'), parameters('imageTag'), parameters('mailbox'), parameters('budgetEuro'), parameters('budgetEmail')))]"
     }
   }
 }
