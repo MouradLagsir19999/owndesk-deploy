@@ -1,0 +1,122 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "basics": {
+        "description": "**OwnDesk** installeert een servicedesk in je eigen Azure-abonnement. Alles komt in één resourcegroep, zodat je de kosten 1-op-1 ziet en alles in één keer kunt verwijderen.\n\nNodig: rol **Owner** (of Contributor + User Access Administrator) op het abonnement.",
+        "location": {
+          "label": "Regio",
+          "toolTip": "Kies een EU-regio. Sommige regio's (zoals West Europe) nemen soms geen nieuwe abonnementen aan; kies dan Sweden Central.",
+          "allowedValues": [
+            "swedencentral",
+            "westeurope",
+            "northeurope",
+            "germanywestcentral",
+            "francecentral"
+          ],
+          "visible": true
+        }
+      }
+    },
+    "basics": [
+      {
+        "name": "naam",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Installatienaam",
+        "defaultValue": "owndesk",
+        "toolTip": "Korte naam die in alle resourcenamen terugkomt.",
+        "constraints": {
+          "required": true,
+          "regex": "^[a-z][a-z0-9]{2,15}$",
+          "validationMessage": "3 tot 16 tekens: kleine letters en cijfers, beginnend met een letter."
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "profiel",
+        "label": "Profiel",
+        "elements": [
+          {
+            "name": "omvang",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Omvang",
+            "defaultValue": "MVP (test en kleine teams)",
+            "toolTip": "Standaard en Enterprise volgen in een latere versie.",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "MVP (test en kleine teams)",
+                  "value": "mvp"
+                }
+              ],
+              "required": true
+            }
+          },
+          {
+            "name": "wat",
+            "type": "Microsoft.Common.InfoBox",
+            "options": {
+              "style": "Info",
+              "text": "Dit wordt aangemaakt: Container Apps (web en worker, schaalt naar 0), PostgreSQL Flexible Server B1ms 32 GB, Key Vault, Storage, Log Analytics (max 0,5 GB/dag) en een budget met alerts.\n\nGeschatte kosten: ongeveer €20–70 per maand bij continu draaien (raming, niet gemeten)."
+            }
+          }
+        ]
+      },
+      {
+        "name": "mail",
+        "label": "Mail",
+        "elements": [
+          {
+            "name": "mailbox",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gedeelde mailbox",
+            "placeholder": "servicedesk@bedrijf.nl",
+            "toolTip": "Mail naar dit adres wordt straks een melding. De koppeling stel je in na de installatie, in de setup-wizard van de app.",
+            "constraints": {
+              "required": false,
+              "regex": "^$|^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+              "validationMessage": "Vul een geldig e-mailadres in, of laat leeg."
+            }
+          }
+        ]
+      },
+      {
+        "name": "kosten",
+        "label": "Kosten",
+        "elements": [
+          {
+            "name": "budgetEuro",
+            "type": "Microsoft.Common.Slider",
+            "label": "Maandbudget (euro)",
+            "min": 10,
+            "max": 1000,
+            "defaultValue": 50,
+            "showStepMarkers": false,
+            "toolTip": "Je krijgt een mail bij 50%, 80% en 100%. Let op: een budget stopt niets, het waarschuwt alleen."
+          },
+          {
+            "name": "budgetEmail",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Mail voor budgetalerts",
+            "constraints": {
+              "required": true,
+              "regex": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+              "validationMessage": "Vul een geldig e-mailadres in."
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "naam": "[basics('naam')]",
+      "location": "[location()]",
+      "omvang": "[steps('profiel').omvang]",
+      "mailbox": "[steps('mail').mailbox]",
+      "budgetEuro": "[steps('kosten').budgetEuro]",
+      "budgetEmail": "[steps('kosten').budgetEmail]"
+    }
+  }
+}
