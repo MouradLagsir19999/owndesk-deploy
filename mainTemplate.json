@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "17617385002809618896"
+      "version": "0.48.1.52935",
+      "templateHash": "3462869147316418667"
     }
   },
   "parameters": {
@@ -43,7 +43,7 @@
     },
     "imageTag": {
       "type": "string",
-      "defaultValue": "20261020.4",
+      "defaultValue": "20261022.4",
       "metadata": {
         "description": "Image tag to install."
       }
@@ -82,6 +82,13 @@
       "metadata": {
         "description": "Generated database password. Never shown; stored only in Key Vault."
       }
+    },
+    "setupCode": {
+      "type": "securestring",
+      "defaultValue": "[newGuid()]",
+      "metadata": {
+        "description": "Generated one-time code for the setup wizard. Never shown; read it from Key Vault."
+      }
     }
   },
   "variables": {
@@ -90,7 +97,8 @@
       "product": "owndesk",
       "installatie": "[parameters('naam')]",
       "omvang": "[parameters('omvang')]"
-    }
+    },
+    "webAppName": "[format('ca-{0}-web', parameters('naam'))]"
   },
   "resources": [
     {
@@ -125,8 +133,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "15628171141484267254"
+              "version": "0.48.1.52935",
+              "templateHash": "8187385447298211134"
             }
           },
           "parameters": {
@@ -202,8 +210,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "15216834490098829485"
+              "version": "0.48.1.52935",
+              "templateHash": "3173784168600466727"
             }
           },
           "parameters": {
@@ -234,6 +242,10 @@
             "principalId": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').principalId]"
+            },
+            "clientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').clientId]"
             }
           }
         }
@@ -280,8 +292,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16903669746808792176"
+              "version": "0.48.1.52935",
+              "templateHash": "15071484752390783928"
             }
           },
           "parameters": {
@@ -401,6 +413,9 @@
           },
           "dbPassword": {
             "value": "[parameters('dbAdminPassword')]"
+          },
+          "setupCode": {
+            "value": "[parameters('setupCode')]"
           }
         },
         "template": {
@@ -409,8 +424,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "7622104315039305251"
+              "version": "0.48.1.52935",
+              "templateHash": "7560531772965257675"
             }
           },
           "parameters": {
@@ -434,6 +449,12 @@
             },
             "dbPassword": {
               "type": "securestring"
+            },
+            "setupCode": {
+              "type": "securestring",
+              "metadata": {
+                "description": "One-time code that unlocks the setup wizard in the app (MVP §3.2 B)."
+              }
             }
           },
           "variables": {
@@ -468,6 +489,17 @@
               ]
             },
             {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'setup-code')]",
+              "properties": {
+                "value": "[parameters('setupCode')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]",
@@ -490,6 +522,10 @@
             "dbConnectionSecretUri": {
               "type": "string",
               "value": "[if(not(equals(extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('name')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('readerPrincipalId'), variables('secretsUserRoleId'))), '')), reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('name'), 'db-connection-string'), '2023-07-01').secretUri, '')]"
+            },
+            "setupCodeSecretUri": {
+              "type": "string",
+              "value": "[if(not(equals(extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('name')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('readerPrincipalId'), variables('secretsUserRoleId'))), '')), reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('name'), 'setup-code'), '2023-07-01').secretUri, '')]"
             }
           }
         }
@@ -525,8 +561,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "7140582636426413601"
+              "version": "0.48.1.52935",
+              "templateHash": "10665425636184911711"
             }
           },
           "parameters": {
@@ -589,6 +625,246 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
+      "name": "environment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('cae-{0}', parameters('naam'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "logAnalyticsName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.name.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "14123529355878320662"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "logAnalyticsName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').primarySharedKey]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('name'))]"
+            },
+            "defaultDomain": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('name')), '2024-03-01').defaultDomain]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "entra",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "uniqueName": {
+            "value": "[format('owndesk-{0}-{1}', parameters('naam'), variables('suffix'))]"
+          },
+          "displayName": {
+            "value": "[format('OwnDesk ({0})', parameters('naam'))]"
+          },
+          "redirectUri": {
+            "value": "[format('{0}/signin-oidc', format('https://{0}.{1}', variables('webAppName'), reference(resourceId('Microsoft.Resources/deployments', 'environment'), '2025-04-01').outputs.defaultDomain.value))]"
+          },
+          "managedIdentityPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.principalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "16785200835023303336"
+            }
+          },
+          "parameters": {
+            "uniqueName": {
+              "type": "string"
+            },
+            "displayName": {
+              "type": "string"
+            },
+            "redirectUri": {
+              "type": "string"
+            },
+            "managedIdentityPrincipalId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "graphAppId": "00000003-0000-0000-c000-000000000000",
+            "roles": [
+              "Medewerker",
+              "Behandelaar",
+              "Beheerder"
+            ]
+          },
+          "imports": {
+            "microsoftGraphV1": {
+              "provider": "MicrosoftGraph",
+              "version": "1.0.0"
+            }
+          },
+          "resources": {
+            "app": {
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/applications@v1.0",
+              "properties": {
+                "copy": [
+                  {
+                    "name": "appRoles",
+                    "count": "[length(variables('roles'))]",
+                    "input": {
+                      "id": "[guid(parameters('uniqueName'), variables('roles')[copyIndex('appRoles')])]",
+                      "value": "[variables('roles')[copyIndex('appRoles')]]",
+                      "displayName": "[variables('roles')[copyIndex('appRoles')]]",
+                      "description": "[format('OwnDesk-rol {0}', variables('roles')[copyIndex('appRoles')])]",
+                      "allowedMemberTypes": [
+                        "User"
+                      ],
+                      "isEnabled": true
+                    }
+                  }
+                ],
+                "uniqueName": "[parameters('uniqueName')]",
+                "displayName": "[parameters('displayName')]",
+                "signInAudience": "AzureADMyOrg",
+                "web": {
+                  "redirectUris": [
+                    "[parameters('redirectUri')]"
+                  ]
+                },
+                "requiredResourceAccess": [
+                  {
+                    "resourceAppId": "[variables('graphAppId')]",
+                    "resourceAccess": [
+                      {
+                        "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
+                        "type": "Scope"
+                      },
+                      {
+                        "id": "df021288-bdef-4463-88db-98f22de89214",
+                        "type": "Role"
+                      },
+                      {
+                        "id": "5b567255-7703-4780-807c-7be8301ae99b",
+                        "type": "Role"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "managedIdentityCredential": {
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/applications/federatedIdentityCredentials@v1.0",
+              "properties": {
+                "name": "[format('{0}/managed-identity', reference('app').uniqueName)]",
+                "issuer": "[format('{0}{1}/v2.0', environment().authentication.loginEndpoint, tenant().tenantId)]",
+                "subject": "[parameters('managedIdentityPrincipalId')]",
+                "audiences": [
+                  "api://AzureADTokenExchange"
+                ]
+              },
+              "dependsOn": [
+                "app"
+              ]
+            },
+            "servicePrincipal": {
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/servicePrincipals@v1.0",
+              "properties": {
+                "appId": "[reference('app').appId]"
+              },
+              "dependsOn": [
+                "app"
+              ]
+            }
+          },
+          "outputs": {
+            "clientId": {
+              "type": "string",
+              "value": "[reference('app').appId]"
+            },
+            "servicePrincipalObjectId": {
+              "type": "string",
+              "value": "[reference('servicePrincipal').id]"
+            },
+            "consentUrl": {
+              "type": "string",
+              "value": "[format('{0}{1}/adminconsent?client_id={2}', environment().authentication.loginEndpoint, tenant().tenantId, reference('app').appId)]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'environment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'identity')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
       "name": "containerapps",
       "properties": {
         "expressionEvaluationOptions": {
@@ -605,14 +881,26 @@
           "tags": {
             "value": "[variables('tags')]"
           },
-          "logAnalyticsName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.name.value]"
+          "environmentId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'environment'), '2025-04-01').outputs.id.value]"
           },
           "identityId": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.id.value]"
           },
+          "identityClientId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.clientId.value]"
+          },
           "dbConnectionSecretUri": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.dbConnectionSecretUri.value]"
+          },
+          "setupCodeSecretUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.setupCodeSecretUri.value]"
+          },
+          "entraClientId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01').outputs.clientId.value]"
+          },
+          "entraServicePrincipalObjectId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01').outputs.servicePrincipalObjectId.value]"
           },
           "apiImage": {
             "value": "[format('{0}/owndesk-api:{1}', parameters('imageRegistry'), parameters('imageTag'))]"
@@ -636,8 +924,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "1361179218278363286"
+              "version": "0.48.1.52935",
+              "templateHash": "349005996049905253"
             }
           },
           "parameters": {
@@ -650,13 +938,25 @@
             "tags": {
               "type": "object"
             },
-            "logAnalyticsName": {
+            "environmentId": {
               "type": "string"
             },
             "identityId": {
               "type": "string"
             },
+            "identityClientId": {
+              "type": "string"
+            },
             "dbConnectionSecretUri": {
+              "type": "string"
+            },
+            "setupCodeSecretUri": {
+              "type": "string"
+            },
+            "entraClientId": {
+              "type": "string"
+            },
+            "entraServicePrincipalObjectId": {
               "type": "string"
             },
             "apiImage": {
@@ -681,6 +981,11 @@
                 "name": "db-connection-string",
                 "keyVaultUrl": "[parameters('dbConnectionSecretUri')]",
                 "identity": "[parameters('identityId')]"
+              },
+              {
+                "name": "setup-code",
+                "keyVaultUrl": "[parameters('setupCodeSecretUri')]",
+                "identity": "[parameters('identityId')]"
               }
             ],
             "env": [
@@ -691,26 +996,30 @@
               {
                 "name": "OwnDesk__Mailbox",
                 "value": "[parameters('mailbox')]"
+              },
+              {
+                "name": "OwnDesk__SetupCode",
+                "secretRef": "setup-code"
+              },
+              {
+                "name": "AzureAd__TenantId",
+                "value": "[tenant().tenantId]"
+              },
+              {
+                "name": "AzureAd__ClientId",
+                "value": "[parameters('entraClientId')]"
+              },
+              {
+                "name": "AzureAd__ServicePrincipalObjectId",
+                "value": "[parameters('entraServicePrincipalObjectId')]"
+              },
+              {
+                "name": "AzureAd__ManagedIdentityClientId",
+                "value": "[parameters('identityClientId')]"
               }
             ]
           },
           "resources": [
-            {
-              "type": "Microsoft.App/managedEnvironments",
-              "apiVersion": "2024-03-01",
-              "name": "[format('cae-{0}', parameters('naam'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "appLogsConfiguration": {
-                  "destination": "log-analytics",
-                  "logAnalyticsConfiguration": {
-                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').customerId]",
-                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').primarySharedKey]"
-                  }
-                }
-              }
-            },
             {
               "type": "Microsoft.App/containerApps",
               "apiVersion": "2024-03-01",
@@ -724,7 +1033,7 @@
                 }
               },
               "properties": {
-                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('cae-{0}', parameters('naam')))]",
+                "managedEnvironmentId": "[parameters('environmentId')]",
                 "configuration": {
                   "ingress": {
                     "external": true,
@@ -766,10 +1075,7 @@
                     "maxReplicas": "[parameters('maxReplicas')]"
                   }
                 }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments', format('cae-{0}', parameters('naam')))]"
-              ]
+              }
             },
             {
               "type": "Microsoft.App/jobs",
@@ -784,7 +1090,7 @@
                 }
               },
               "properties": {
-                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('cae-{0}', parameters('naam')))]",
+                "environmentId": "[parameters('environmentId')]",
                 "configuration": {
                   "triggerType": "Schedule",
                   "scheduleTriggerConfig": {
@@ -809,10 +1115,7 @@
                     }
                   ]
                 }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments', format('cae-{0}', parameters('naam')))]"
-              ]
+              }
             }
           ],
           "outputs": {
@@ -824,9 +1127,10 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'entra')]",
+        "[resourceId('Microsoft.Resources/deployments', 'environment')]",
         "[resourceId('Microsoft.Resources/deployments', 'identity')]",
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]",
-        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]"
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]"
       ]
     },
     {
@@ -858,8 +1162,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "6994364503570131503"
+              "version": "0.48.1.52935",
+              "templateHash": "12639083354612700372"
             }
           },
           "parameters": {
@@ -935,9 +1239,16 @@
     "keyVaultName": {
       "type": "string",
       "metadata": {
-        "description": "Key Vault with the generated secrets (setup code from OD-014 B lives here)."
+        "description": "Key Vault with the generated secrets; the setup code is the secret \"setup-code\"."
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.name.value]"
+    },
+    "adminConsentUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Open as a Global Administrator to grant the Graph permissions (setup wizard step 1)."
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01').outputs.consentUrl.value]"
     }
   }
 }
