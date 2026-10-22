@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "11273661840032802481"
+      "templateHash": "7167335687865431421"
     }
   },
   "parameters": {
@@ -76,18 +76,25 @@
         "description": "First day of the budget period. Leave the default."
       }
     },
-    "createEntraApp": {
-      "type": "bool",
-      "defaultValue": false,
+    "entraClientId": {
+      "type": "string",
+      "defaultValue": "",
       "metadata": {
-        "description": "Create the Entra app registration (needs Application Administrator; run from Azure CLI or Cloud Shell)."
+        "description": "Entra app id. Set by setup-entra.sh; pass it again when re-deploying from the CLI."
       }
     },
-    "templateUri": {
+    "entraServicePrincipalObjectId": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/MouradLagsir19999/owndesk-deploy/main/mainTemplate.json",
+      "defaultValue": "",
       "metadata": {
-        "description": "Public address of this template, used in the Cloud Shell command."
+        "description": "Object id of the Entra service principal. Set by setup-entra.sh."
+      }
+    },
+    "setupScriptUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/MouradLagsir19999/owndesk-deploy/main/setup-entra.sh",
+      "metadata": {
+        "description": "Public address of the Entra setup script, shown in the cloudShellCommand output."
       }
     },
     "dbAdminPassword": {
@@ -111,8 +118,7 @@
       "product": "owndesk",
       "installatie": "[parameters('naam')]",
       "omvang": "[parameters('omvang')]"
-    },
-    "webAppName": "[format('ca-{0}-web', parameters('naam'))]"
+    }
   },
   "resources": [
     {
@@ -718,166 +724,6 @@
       ]
     },
     {
-      "condition": "[parameters('createEntraApp')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "entra",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "uniqueName": {
-            "value": "[format('owndesk-{0}-{1}', parameters('naam'), variables('suffix'))]"
-          },
-          "displayName": {
-            "value": "[format('OwnDesk ({0})', parameters('naam'))]"
-          },
-          "redirectUri": {
-            "value": "[format('{0}/signin-oidc', format('https://{0}.{1}', variables('webAppName'), reference(resourceId('Microsoft.Resources/deployments', 'environment'), '2025-04-01').outputs.defaultDomain.value))]"
-          },
-          "managedIdentityPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.principalId.value]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.0",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.48.1.52935",
-              "templateHash": "16785200835023303336"
-            }
-          },
-          "parameters": {
-            "uniqueName": {
-              "type": "string"
-            },
-            "displayName": {
-              "type": "string"
-            },
-            "redirectUri": {
-              "type": "string"
-            },
-            "managedIdentityPrincipalId": {
-              "type": "string"
-            }
-          },
-          "variables": {
-            "graphAppId": "00000003-0000-0000-c000-000000000000",
-            "roles": [
-              "Medewerker",
-              "Behandelaar",
-              "Beheerder"
-            ]
-          },
-          "imports": {
-            "microsoftGraphV1": {
-              "provider": "MicrosoftGraph",
-              "version": "1.0.0"
-            }
-          },
-          "resources": {
-            "app": {
-              "import": "microsoftGraphV1",
-              "type": "Microsoft.Graph/applications@v1.0",
-              "properties": {
-                "copy": [
-                  {
-                    "name": "appRoles",
-                    "count": "[length(variables('roles'))]",
-                    "input": {
-                      "id": "[guid(parameters('uniqueName'), variables('roles')[copyIndex('appRoles')])]",
-                      "value": "[variables('roles')[copyIndex('appRoles')]]",
-                      "displayName": "[variables('roles')[copyIndex('appRoles')]]",
-                      "description": "[format('OwnDesk-rol {0}', variables('roles')[copyIndex('appRoles')])]",
-                      "allowedMemberTypes": [
-                        "User"
-                      ],
-                      "isEnabled": true
-                    }
-                  }
-                ],
-                "uniqueName": "[parameters('uniqueName')]",
-                "displayName": "[parameters('displayName')]",
-                "signInAudience": "AzureADMyOrg",
-                "web": {
-                  "redirectUris": [
-                    "[parameters('redirectUri')]"
-                  ]
-                },
-                "requiredResourceAccess": [
-                  {
-                    "resourceAppId": "[variables('graphAppId')]",
-                    "resourceAccess": [
-                      {
-                        "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
-                        "type": "Scope"
-                      },
-                      {
-                        "id": "df021288-bdef-4463-88db-98f22de89214",
-                        "type": "Role"
-                      },
-                      {
-                        "id": "5b567255-7703-4780-807c-7be8301ae99b",
-                        "type": "Role"
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "managedIdentityCredential": {
-              "import": "microsoftGraphV1",
-              "type": "Microsoft.Graph/applications/federatedIdentityCredentials@v1.0",
-              "properties": {
-                "name": "[format('{0}/managed-identity', reference('app').uniqueName)]",
-                "issuer": "[format('{0}{1}/v2.0', environment().authentication.loginEndpoint, tenant().tenantId)]",
-                "subject": "[parameters('managedIdentityPrincipalId')]",
-                "audiences": [
-                  "api://AzureADTokenExchange"
-                ]
-              },
-              "dependsOn": [
-                "app"
-              ]
-            },
-            "servicePrincipal": {
-              "import": "microsoftGraphV1",
-              "type": "Microsoft.Graph/servicePrincipals@v1.0",
-              "properties": {
-                "appId": "[reference('app').appId]"
-              },
-              "dependsOn": [
-                "app"
-              ]
-            }
-          },
-          "outputs": {
-            "clientId": {
-              "type": "string",
-              "value": "[reference('app').appId]"
-            },
-            "servicePrincipalObjectId": {
-              "type": "string",
-              "value": "[reference('servicePrincipal').id]"
-            },
-            "consentUrl": {
-              "type": "string",
-              "value": "[format('{0}{1}/adminconsent?client_id={2}', environment().authentication.loginEndpoint, tenant().tenantId, reference('app').appId)]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'environment')]",
-        "[resourceId('Microsoft.Resources/deployments', 'identity')]"
-      ]
-    },
-    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "containerapps",
@@ -912,10 +758,10 @@
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.setupCodeSecretUri.value]"
           },
           "entraClientId": {
-            "value": "[coalesce(tryGet(if(parameters('createEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01'), null()), 'outputs', 'clientId', 'value'), '')]"
+            "value": "[parameters('entraClientId')]"
           },
           "entraServicePrincipalObjectId": {
-            "value": "[coalesce(tryGet(if(parameters('createEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01'), null()), 'outputs', 'servicePrincipalObjectId', 'value'), '')]"
+            "value": "[parameters('entraServicePrincipalObjectId')]"
           },
           "apiImage": {
             "value": "[format('{0}/owndesk-api:{1}', parameters('imageRegistry'), parameters('imageTag'))]"
@@ -1142,7 +988,6 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'entra')]",
         "[resourceId('Microsoft.Resources/deployments', 'environment')]",
         "[resourceId('Microsoft.Resources/deployments', 'identity')]",
         "[resourceId('Microsoft.Resources/deployments', 'keyvault')]"
@@ -1258,19 +1103,12 @@
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.name.value]"
     },
-    "adminConsentUrl": {
-      "type": "string",
-      "metadata": {
-        "description": "Open as a Global Administrator to grant the Graph permissions (setup wizard step 1)."
-      },
-      "value": "[coalesce(tryGet(if(parameters('createEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'entra'), '2025-04-01'), null()), 'outputs', 'consentUrl', 'value'), 'Eerst het Cloud Shell-commando uitvoeren.')]"
-    },
     "cloudShellCommand": {
       "type": "string",
       "metadata": {
-        "description": "Next step: paste this in Azure Cloud Shell (Bash) to create the Entra app registration."
+        "description": "Next step: paste this in Azure Cloud Shell (Bash). It creates the Entra app and links it to this installation."
       },
-      "value": "[if(parameters('createEntraApp'), 'Klaar: de Entra-app is aangemaakt.', format('az deployment group create -g {0} -n owndesk-entra --template-uri {1} --parameters naam={2} imageRegistry={3} imageTag={4} mailbox={5} budgetEuro={6} budgetEmail={7} createEntraApp=true', resourceGroup().name, parameters('templateUri'), parameters('naam'), parameters('imageRegistry'), parameters('imageTag'), parameters('mailbox'), parameters('budgetEuro'), parameters('budgetEmail')))]"
+      "value": "[format('bash <(curl -fsSL {0}) {1} {2}', parameters('setupScriptUri'), resourceGroup().name, parameters('naam'))]"
     }
   }
 }
