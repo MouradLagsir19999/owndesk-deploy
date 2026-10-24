@@ -8,8 +8,9 @@
 # deployment came from the Azure Portal or Cloud Shell (22-10-2026), while `az ad` works there.
 #
 # Safe to run again. No client secret is created: the app signs in with the installation's managed
-# identity through a federated credential. Mail rights are NOT granted here (they would open every
-# mailbox); the setup wizard in the app shows the Exchange commands for the shared mailbox only.
+# identity through a federated credential. Like TOPdesk, the app gets Mail.ReadWrite and Mail.Send as
+# application permissions; after admin consent these apply to ALL mailboxes in the tenant. Limiting them to
+# the shared mailbox is an optional step in the setup wizard (Exchange RBAC for Applications).
 # Needs: Application Administrator (or Global Administrator) in Entra ID, Contributor on the resource group.
 
 set -euo pipefail
@@ -53,12 +54,14 @@ roles = [{"id": existing.get(n, str(uuid.uuid5(uuid.NAMESPACE_URL, "owndesk-role
          for n in ("Medewerker", "Behandelaar", "Beheerder")]
 json.dump(roles, open(sys.argv[2], "w"))
 PY
-# User.Read (sign-in), User.Read.All and Group.Read.All (application). No Mail.* on purpose.
+# User.Read (sign-in); application: User.Read.All, Group.Read.All, Mail.ReadWrite, Mail.Send.
 cat >"$TMP/access.json" <<EOF
 [{"resourceAppId":"${GRAPH}","resourceAccess":[
   {"id":"e1fe6dd8-ba31-4d61-89e7-88639da4683d","type":"Scope"},
   {"id":"df021288-bdef-4463-88db-98f22de89214","type":"Role"},
-  {"id":"5b567255-7703-4780-807c-7be8301ae99b","type":"Role"}
+  {"id":"5b567255-7703-4780-807c-7be8301ae99b","type":"Role"},
+  {"id":"e2a3a72e-5f79-4c64-b1b1-878b674786c9","type":"Role"},
+  {"id":"b633e1c5-b582-4048-a93e-9f11b44c7e96","type":"Role"}
 ]}]
 EOF
 
