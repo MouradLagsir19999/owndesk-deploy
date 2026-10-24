@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "6802788931391346095"
+      "templateHash": "2680083153689653709"
     }
   },
   "parameters": {
@@ -43,7 +43,7 @@
     },
     "imageTag": {
       "type": "string",
-      "defaultValue": "20261024.1",
+      "defaultValue": "20261024.6",
       "metadata": {
         "description": "Image tag to install."
       }
