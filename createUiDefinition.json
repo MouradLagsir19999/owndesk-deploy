@@ -113,7 +113,8 @@
               "required": true,
               "regex": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
               "validationMessage": "Vul een geldig e-mailadres in."
-            }
+            },
+            "toolTip": "Dit adres krijgt een mail bij 50%, 80% en 100% van het maandbudget."
           }
         ]
       }

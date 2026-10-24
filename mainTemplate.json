@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "4011188605352720767"
+      "templateHash": "7259763000140807614"
     }
   },
   "parameters": {
@@ -59,6 +59,7 @@
       "type": "int",
       "defaultValue": 50,
       "minValue": 1,
+      "maxValue": 100000,
       "metadata": {
         "description": "Monthly budget in euro for this resource group. Alerts only: a budget does not stop spending."
       }
@@ -74,6 +75,13 @@
       "defaultValue": "[utcNow('yyyy-MM-01')]",
       "metadata": {
         "description": "First day of the budget period. Leave the default."
+      }
+    },
+    "dbAdminLogin": {
+      "type": "string",
+      "defaultValue": "owndeskadmin",
+      "metadata": {
+        "description": "Database administrator name. The password is generated and kept in Key Vault."
       }
     },
     "dbAdminPassword": {
@@ -126,7 +134,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "8187385447298211134"
+              "templateHash": "13338108367905210546"
             }
           },
           "parameters": {
@@ -152,7 +160,7 @@
           "resources": [
             {
               "type": "Microsoft.OperationalInsights/workspaces",
-              "apiVersion": "2023-09-01",
+              "apiVersion": "2025-07-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -203,7 +211,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "3173784168600466727"
+              "templateHash": "1266502855913402390"
             }
           },
           "parameters": {
@@ -220,7 +228,7 @@
           "resources": [
             {
               "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-              "apiVersion": "2023-01-31",
+              "apiVersion": "2024-11-30",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]"
@@ -233,11 +241,11 @@
             },
             "principalId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').principalId]"
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2024-11-30').principalId]"
             },
             "clientId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').clientId]"
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2024-11-30').clientId]"
             }
           }
         }
@@ -262,6 +270,9 @@
           "tags": {
             "value": "[variables('tags')]"
           },
+          "adminLogin": {
+            "value": "[parameters('dbAdminLogin')]"
+          },
           "adminPassword": {
             "value": "[parameters('dbAdminPassword')]"
           },
@@ -285,7 +296,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "15071484752390783928"
+              "templateHash": "3706767374343827751"
             }
           },
           "parameters": {
@@ -312,16 +323,18 @@
             },
             "backupRetentionDays": {
               "type": "int"
+            },
+            "adminLogin": {
+              "type": "string"
             }
           },
           "variables": {
-            "adminLogin": "owndeskadmin",
             "databaseName": "owndesk"
           },
           "resources": [
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers",
-              "apiVersion": "2024-08-01",
+              "apiVersion": "2025-08-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -331,7 +344,7 @@
               },
               "properties": {
                 "version": "17",
-                "administratorLogin": "[variables('adminLogin')]",
+                "administratorLogin": "[parameters('adminLogin')]",
                 "administratorLoginPassword": "[parameters('adminPassword')]",
                 "storage": {
                   "storageSizeGB": "[parameters('storageGb')]"
@@ -350,7 +363,7 @@
             },
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
-              "apiVersion": "2024-08-01",
+              "apiVersion": "2025-08-01",
               "name": "[format('{0}/{1}', parameters('name'), variables('databaseName'))]",
               "dependsOn": [
                 "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('name'))]"
@@ -358,7 +371,7 @@
             },
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
-              "apiVersion": "2024-08-01",
+              "apiVersion": "2025-08-01",
               "name": "[format('{0}/{1}', parameters('name'), 'AllowAzureServices')]",
               "properties": {
                 "startIpAddress": "0.0.0.0",
@@ -372,7 +385,7 @@
           "outputs": {
             "connectionInfo": {
               "type": "string",
-              "value": "[format('Host={0};Database={1};Username={2};SSL Mode=Require', reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('name')), '2024-08-01').fullyQualifiedDomainName, variables('databaseName'), variables('adminLogin'))]"
+              "value": "[format('Host={0};Database={1};Username={2};SSL Mode=Require', reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('name')), '2025-08-01').fullyQualifiedDomainName, variables('databaseName'), parameters('adminLogin'))]"
             }
           }
         }
@@ -414,7 +427,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "13664269694666898849"
+              "templateHash": "6718761513241781549"
             }
           },
           "parameters": {
@@ -446,7 +459,7 @@
           "resources": [
             {
               "type": "Microsoft.KeyVault/vaults",
-              "apiVersion": "2023-07-01",
+              "apiVersion": "2025-05-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -462,7 +475,7 @@
             },
             {
               "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
+              "apiVersion": "2025-05-01",
               "name": "[format('{0}/{1}', parameters('name'), 'db-connection-string')]",
               "properties": {
                 "value": "[format('{0};Password={1}', parameters('dbConnectionString'), parameters('dbPassword'))]"
@@ -493,7 +506,7 @@
             },
             "dbConnectionSecretUri": {
               "type": "string",
-              "value": "[if(not(equals(extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('name')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('readerPrincipalId'), variables('secretsUserRoleId'))), '')), reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('name'), 'db-connection-string'), '2023-07-01').secretUri, '')]"
+              "value": "[if(not(equals(extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('name')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('readerPrincipalId'), variables('secretsUserRoleId'))), '')), reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('name'), 'db-connection-string'), '2025-05-01').secretUri, '')]"
             }
           }
         }
@@ -530,7 +543,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "10665425636184911711"
+              "templateHash": "5981919922595306423"
             }
           },
           "parameters": {
@@ -547,7 +560,7 @@
           "resources": [
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2023-05-01",
+              "apiVersion": "2025-06-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -563,7 +576,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices",
-              "apiVersion": "2023-05-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('name'), 'default')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
@@ -571,7 +584,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-              "apiVersion": "2023-05-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('name'), 'default', 'bijlagen')]",
               "properties": {
                 "publicAccess": "None"
@@ -620,7 +633,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "14123529355878320662"
+              "templateHash": "14380832166372644822"
             }
           },
           "parameters": {
@@ -640,7 +653,7 @@
           "resources": [
             {
               "type": "Microsoft.App/managedEnvironments",
-              "apiVersion": "2024-03-01",
+              "apiVersion": "2025-07-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -648,8 +661,8 @@
                 "appLogsConfiguration": {
                   "destination": "log-analytics",
                   "logAnalyticsConfiguration": {
-                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').customerId]",
-                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').primarySharedKey]"
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2025-07-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2025-07-01').primarySharedKey]"
                   }
                 }
               }
@@ -662,7 +675,7 @@
             },
             "defaultDomain": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('name')), '2024-03-01').defaultDomain]"
+              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('name')), '2025-07-01').defaultDomain]"
             }
           }
         }
@@ -728,7 +741,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "1192055720798725501"
+              "templateHash": "73138151924411577"
             }
           },
           "parameters": {
@@ -810,7 +823,7 @@
           "resources": [
             {
               "type": "Microsoft.App/containerApps",
-              "apiVersion": "2024-03-01",
+              "apiVersion": "2025-07-01",
               "name": "[format('ca-{0}-web', parameters('naam'))]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -867,7 +880,7 @@
             },
             {
               "type": "Microsoft.App/jobs",
-              "apiVersion": "2024-03-01",
+              "apiVersion": "2025-07-01",
               "name": "[format('caj-{0}-worker', parameters('naam'))]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -909,7 +922,7 @@
           "outputs": {
             "apiUrl": {
               "type": "string",
-              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-{0}-web', parameters('naam'))), '2024-03-01').configuration.ingress.fqdn)]"
+              "value": "[uri(format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-{0}-web', parameters('naam'))), '2025-07-01').configuration.ingress.fqdn), '/')]"
             }
           }
         }
@@ -950,7 +963,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "12639083354612700372"
+              "templateHash": "17833137477513190340"
             }
           },
           "parameters": {
@@ -970,7 +983,7 @@
           "resources": [
             {
               "type": "Microsoft.Consumption/budgets",
-              "apiVersion": "2023-11-01",
+              "apiVersion": "2025-07-01",
               "name": "[parameters('name')]",
               "properties": {
                 "category": "Cost",
