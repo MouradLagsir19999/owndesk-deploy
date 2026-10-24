@@ -67,8 +67,8 @@
             "name": "vervolg",
             "type": "Microsoft.Common.InfoBox",
             "options": {
-              "style": "Warning",
-              "text": "Na de installatie volgt één extra stap: open Azure Cloud Shell (Bash) en plak het commando uit Uitvoer > cloudShellCommand van deze implementatie. Dat maakt de Entra-app voor inloggen aan. Daarvoor heb je de rol Application Administrator of Global Administrator nodig."
+              "style": "Info",
+              "text": "Na de installatie open je de app via Uitvoer > appUrl. De setup-wizard in de app vraagt je om in te loggen als Globale beheerder van je Microsoft-omgeving; OwnDesk richt daarna zelf het inloggen, de toestemming en jouw rol Beheerder in."
             }
           }
         ]

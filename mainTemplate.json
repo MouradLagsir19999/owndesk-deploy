@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "2680083153689653709"
+      "templateHash": "4011188605352720767"
     }
   },
   "parameters": {
@@ -43,7 +43,7 @@
     },
     "imageTag": {
       "type": "string",
-      "defaultValue": "20261024.6",
+      "defaultValue": "20261024.9",
       "metadata": {
         "description": "Image tag to install."
       }
@@ -76,39 +76,11 @@
         "description": "First day of the budget period. Leave the default."
       }
     },
-    "entraClientId": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Entra app id. Set by setup-entra.sh; pass it again when re-deploying from the CLI."
-      }
-    },
-    "entraServicePrincipalObjectId": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Object id of the Entra service principal. Set by setup-entra.sh."
-      }
-    },
-    "setupScriptUri": {
-      "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/MouradLagsir19999/owndesk-deploy/main/setup-entra.sh",
-      "metadata": {
-        "description": "Public address of the Entra setup script, shown in the cloudShellCommand output."
-      }
-    },
     "dbAdminPassword": {
       "type": "securestring",
       "defaultValue": "[format('Od1!{0}', newGuid())]",
       "metadata": {
         "description": "Generated database password. Never shown; stored only in Key Vault."
-      }
-    },
-    "setupCode": {
-      "type": "securestring",
-      "defaultValue": "[newGuid()]",
-      "metadata": {
-        "description": "Generated one-time code for the setup wizard. Never shown; read it from Key Vault."
       }
     }
   },
@@ -433,9 +405,6 @@
           },
           "dbPassword": {
             "value": "[parameters('dbAdminPassword')]"
-          },
-          "setupCode": {
-            "value": "[parameters('setupCode')]"
           }
         },
         "template": {
@@ -445,7 +414,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "7560531772965257675"
+              "templateHash": "13664269694666898849"
             }
           },
           "parameters": {
@@ -469,12 +438,6 @@
             },
             "dbPassword": {
               "type": "securestring"
-            },
-            "setupCode": {
-              "type": "securestring",
-              "metadata": {
-                "description": "One-time code that unlocks the setup wizard in the app (MVP §3.2 B)."
-              }
             }
           },
           "variables": {
@@ -509,17 +472,6 @@
               ]
             },
             {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'setup-code')]",
-              "properties": {
-                "value": "[parameters('setupCode')]"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
-              ]
-            },
-            {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]",
@@ -542,10 +494,6 @@
             "dbConnectionSecretUri": {
               "type": "string",
               "value": "[if(not(equals(extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('name')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('readerPrincipalId'), variables('secretsUserRoleId'))), '')), reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('name'), 'db-connection-string'), '2023-07-01').secretUri, '')]"
-            },
-            "setupCodeSecretUri": {
-              "type": "string",
-              "value": "[if(not(equals(extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('name')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('readerPrincipalId'), variables('secretsUserRoleId'))), '')), reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('name'), 'setup-code'), '2023-07-01').secretUri, '')]"
             }
           }
         }
@@ -751,17 +699,11 @@
           "identityClientId": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.clientId.value]"
           },
+          "identityPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'identity'), '2025-04-01').outputs.principalId.value]"
+          },
           "dbConnectionSecretUri": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.dbConnectionSecretUri.value]"
-          },
-          "setupCodeSecretUri": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.setupCodeSecretUri.value]"
-          },
-          "entraClientId": {
-            "value": "[parameters('entraClientId')]"
-          },
-          "entraServicePrincipalObjectId": {
-            "value": "[parameters('entraServicePrincipalObjectId')]"
           },
           "apiImage": {
             "value": "[format('{0}/owndesk-api:{1}', parameters('imageRegistry'), parameters('imageTag'))]"
@@ -786,7 +728,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "349005996049905253"
+              "templateHash": "1192055720798725501"
             }
           },
           "parameters": {
@@ -808,16 +750,10 @@
             "identityClientId": {
               "type": "string"
             },
+            "identityPrincipalId": {
+              "type": "string"
+            },
             "dbConnectionSecretUri": {
-              "type": "string"
-            },
-            "setupCodeSecretUri": {
-              "type": "string"
-            },
-            "entraClientId": {
-              "type": "string"
-            },
-            "entraServicePrincipalObjectId": {
               "type": "string"
             },
             "apiImage": {
@@ -842,11 +778,6 @@
                 "name": "db-connection-string",
                 "keyVaultUrl": "[parameters('dbConnectionSecretUri')]",
                 "identity": "[parameters('identityId')]"
-              },
-              {
-                "name": "setup-code",
-                "keyVaultUrl": "[parameters('setupCodeSecretUri')]",
-                "identity": "[parameters('identityId')]"
               }
             ],
             "env": [
@@ -859,24 +790,20 @@
                 "value": "[parameters('mailbox')]"
               },
               {
-                "name": "OwnDesk__SetupCode",
-                "secretRef": "setup-code"
+                "name": "OwnDesk__InstallationName",
+                "value": "[parameters('naam')]"
               },
               {
                 "name": "AzureAd__TenantId",
                 "value": "[tenant().tenantId]"
               },
               {
-                "name": "AzureAd__ClientId",
-                "value": "[parameters('entraClientId')]"
-              },
-              {
-                "name": "AzureAd__ServicePrincipalObjectId",
-                "value": "[parameters('entraServicePrincipalObjectId')]"
-              },
-              {
                 "name": "AzureAd__ManagedIdentityClientId",
                 "value": "[parameters('identityClientId')]"
+              },
+              {
+                "name": "AzureAd__ManagedIdentityPrincipalId",
+                "value": "[parameters('identityPrincipalId')]"
               }
             ]
           },
@@ -1092,23 +1019,16 @@
     "appUrl": {
       "type": "string",
       "metadata": {
-        "description": "Open this address after the deployment."
+        "description": "Next step: open this address. The setup wizard signs you in as Microsoft admin and sets up sign-in itself."
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerapps'), '2025-04-01').outputs.apiUrl.value]"
     },
     "keyVaultName": {
       "type": "string",
       "metadata": {
-        "description": "Key Vault with the generated secrets; the setup code is the secret \"setup-code\"."
+        "description": "Key Vault with the generated database password."
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2025-04-01').outputs.name.value]"
-    },
-    "cloudShellCommand": {
-      "type": "string",
-      "metadata": {
-        "description": "Next step: paste this in Azure Cloud Shell (Bash). It creates the Entra app and links it to this installation."
-      },
-      "value": "[format('bash <(curl -fsSL {0}) {1} {2}', parameters('setupScriptUri'), resourceGroup().name, parameters('naam'))]"
     }
   }
 }
